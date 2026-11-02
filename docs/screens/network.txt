@@ -1,0 +1,26 @@
+╭ systui v0.1.0 ────────────────────────────────────────────────────────────────────────────────────────── live 0.1s ╮
+│  1 Overview   2 Processes   3 Network   4 Storage   5 Dev   6 Services                                             │
+│────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+│╭ Interfaces (5) ──────────────────────────────────────────────────────╮╭ Ethernet ────────────────────────────────╮│
+││NAME          STATE    ↓ RATE       ↑ RATE       ↓ TOTAL    ↑ TOTAL   ││state up                                  ││
+││Ethernet      up       10.5 KiB/s   870 B/s      26.4 GiB   1.2 GiB   ││                                          ││
+││Ethernet 2    up       0 B/s        0 B/s        0 B        0 B       ││↓ now 10.5 KiB/s   peak 3.5 MiB/s         ││
+││Ethernet-Npca up       10.5 KiB/s   870 B/s      26.4 GiB   1.2 GiB   ││▇▁▁▁▁▃█▁▁                                 ││
+││vEthernet (De up       0 B/s        0 B/s        0 B        1.2 MiB   ││↑ now 870 B/s   peak 67.3 KiB/s           ││
+││vEthernet (WS up       0 B/s        0 B/s        27.9 MiB   1.1 GiB   ││▁▁▁▁▁▁▁▁▁                                 ││
+││                                                                      ││                                          ││
+││                                                                      ││Rates are bytes/second between samples.   ││
+││                                                                      ││TOTAL columns are cumulative bytes since  ││
+││                                                                      ││the counter started (boot/driver), not a  ││
+││                                                                      ││rate.                                     ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+││                                                                      ││                                          ││
+│╰──────────────────────────────────────────────────────────────────────╯│                                          ││
+│ Σ non-loopback (may include virtual adapters): ↓ 20.9 KiB/s  ↑ 1.7 KiB/╰──────────────────────────────────────────╯│
+│ 1-6 view  j/k select  s sort  Space pause  Ctrl+K cmds  ? help  q quit                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

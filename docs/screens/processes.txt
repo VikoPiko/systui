@@ -1,0 +1,30 @@
+╭ systui v0.1.0 ────────────────────────────────────────────────────────────────────────────────────────── live 0.1s ╮
+│  1 Overview   2 Processes   3 Network   4 Storage   5 Dev   6 Services                                             │
+│────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+│╭ Processes 333/333  sort CPU v  CPU: 100%=1 core ─────────────────────────────────────────────────────────────────╮│
+││PID     NAME                                                                  CPU     MEM        STATUS    PPID   ││
+││61908   dllhost.exe                                                           19%     14.5 MiB   —         1588   ││
+││75472   firefox.exe                                                           14%     526 MiB    —         58592  ││
+││83812   firefox.exe                                                           14%     398 MiB    —         75472  ││
+││47584   claude.exe                                                            12%     467 MiB    —         84488  ││
+││13772   firefox.exe                                                           9.3%    189 MiB    —         75472  ││
+││37260   screenshot.exe                                                        9.3%    16.7 MiB   —         83324  ││
+││88644   audiodg.exe                                                           4.7%    19.4 MiB   —         3848   ││
+││70252   WindowsTerminal.exe                                                   2.4%    110 MiB    —         73596  ││
+││72824   Docker Desktop.exe                                                    2.3%    194 MiB    —         71508  ││
+││72980   claude.exe                                                            2.3%    150 MiB    —         86820  ││
+││1480    ChatGPT.exe                                                           0.0%    183 MiB    —         45972  ││
+││3580    ChatGPT.exe                                                           0.0%    39.1 MiB   —         1480   ││
+││3748    ChatGPT.exe                                                           0.0%    307 MiB    —         1480   ││
+││3876    ChatGPT.exe                                                           0.0%    64.1 MiB   —         1480   ││
+││5236    AnyDesk.exe                                                           0.0%    3.5 MiB    —         1400   ││
+││5948    conhost.exe                                                           0.0%    9.5 MiB    —         62564  ││
+││6064    ShellExperienceHost.exe                                               0.0%    43.3 MiB   —         1588   ││
+││7780    codex-code-mode-host.exe                                              0.0%    19.0 MiB   —         61812  ││
+││7836    wslhost.exe                                                           0.0%    11.2 MiB   —         37432  ││
+││8296    svchost.exe                                                           0.0%    10.8 MiB   —         1400   ││
+││10648   firefox.exe                                                           0.0%    265 MiB    —         75472  ││
+││11456   MicrosoftStartFeedProvider.exe                                        0.0%    26.6 MiB   —         1588   ││
+│╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+│ j/k move  / filter  s sort  t tree  i I/O  Enter details  K terminate  w changes  ? help  q quit                   │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
