@@ -32,6 +32,10 @@ pub struct Cli {
 pub enum Command {
     /// Check collector availability and print resolved paths.
     Doctor,
+    /// Print a shell completion script (bash, zsh, fish, powershell, elvish) to stdout.
+    Completions { shell: clap_complete::Shell },
+    /// Print the manual page (roff) to stdout.
+    Man,
     /// Print a one-shot, read-only system summary.
     Snapshot {
         /// Emit JSON (currently the only format).

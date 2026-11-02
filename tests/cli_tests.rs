@@ -162,3 +162,70 @@ fn doctor_columns_are_separated() {
     let t = String::from_utf8_lossy(&o.stdout);
     assert!(!t.contains("ttyfalse") && !t.contains("ttytrue"), "{t}");
 }
+
+#[test]
+fn completions_exist_for_every_shell_and_cover_the_real_cli() {
+    for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {
+        let o = bin().args(["completions", shell]).output().unwrap();
+        assert!(
+            o.status.success(),
+            "{shell}: {}",
+            String::from_utf8_lossy(&o.stderr)
+        );
+        let t = String::from_utf8_lossy(&o.stdout);
+        assert!(t.len() > 200, "{shell}: suspiciously short");
+        // generated from the live clap definition, so every subcommand and flag is present
+        for w in [
+            "doctor",
+            "snapshot",
+            "completions",
+            "man",
+            "refresh-ms",
+            "no-color",
+        ] {
+            assert!(t.contains(w), "{shell} completion misses `{w}`");
+        }
+        assert!(!t.contains('\x1b'), "{shell}: no escape sequences");
+    }
+}
+
+#[test]
+fn unknown_shell_is_rejected_with_the_valid_choices() {
+    let o = bin().args(["completions", "tcsh"]).output().unwrap();
+    assert!(!o.status.success());
+    let e = String::from_utf8_lossy(&o.stderr);
+    assert!(e.contains("bash") && e.contains("powershell"), "{e}");
+}
+
+#[test]
+fn man_page_is_valid_roff_that_documents_the_commands() {
+    let o = bin().arg("man").output().unwrap();
+    assert!(o.status.success());
+    let t = String::from_utf8_lossy(&o.stdout);
+    assert!(t.contains(".TH systui 1"), "{}", &t[..t.len().min(200)]);
+    for w in ["SYNOPSIS", "doctor", "snapshot", r"refresh\-ms"] {
+        assert!(t.contains(w), "man page misses `{w}`");
+    }
+    assert!(
+        t.contains(env!("CARGO_PKG_VERSION")),
+        "version is stamped in"
+    );
+}
+
+#[test]
+fn generators_survive_a_closed_pipe() {
+    for args in [vec!["man"], vec!["completions", "bash"]] {
+        let mut child = bin()
+            .args(&args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        drop(child.stdout.take());
+        let out = child.wait_with_output().unwrap();
+        assert!(
+            !String::from_utf8_lossy(&out.stderr).contains("panicked"),
+            "{args:?}"
+        );
+    }
+}

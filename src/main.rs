@@ -38,6 +38,14 @@ fn run(cli: Cli) -> Result<bool, String> {
     match &cli.command {
         // doctor reports config problems itself instead of aborting early.
         Some(Command::Doctor) => return commands::doctor(cli.config.as_deref()),
+        Some(Command::Completions { shell }) => {
+            commands::completions(*shell);
+            return Ok(true);
+        }
+        Some(Command::Man) => {
+            commands::man()?;
+            return Ok(true);
+        }
         Some(Command::Snapshot {
             json,
             output,

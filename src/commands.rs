@@ -419,3 +419,27 @@ pub fn doctor(config_override: Option<&Path>) -> Result<bool, String> {
     );
     Ok(ok)
 }
+
+/// Write `bytes` to stdout, ignoring a closed pipe (`systui man | head`).
+fn write_stdout(bytes: &[u8]) {
+    let _ = std::io::stdout().write_all(bytes);
+}
+
+/// Shell completion script for `shell`, generated from the live CLI definition.
+pub fn completions(shell: clap_complete::Shell) {
+    use clap::CommandFactory;
+    let mut buf = Vec::new();
+    clap_complete::generate(shell, &mut crate::cli::Cli::command(), "systui", &mut buf);
+    write_stdout(&buf);
+}
+
+/// The manual page in roff format, generated from the live CLI definition.
+pub fn man() -> Result<(), String> {
+    use clap::CommandFactory;
+    let mut buf = Vec::new();
+    clap_mangen::Man::new(crate::cli::Cli::command())
+        .render(&mut buf)
+        .map_err(|e| format!("cannot render the man page: {e}"))?;
+    write_stdout(&buf);
+    Ok(())
+}
