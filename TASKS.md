@@ -82,9 +82,22 @@
 - [ ] No git commit exists yet (nothing has been committed or pushed); no repository URL in `Cargo.toml` (`publish = false` until you choose one).
 - [ ] Not done: code signing, an MSI/winget/Homebrew package, bare-metal-Linux and macOS testing, glibc portability testing of the release binary (the release workflow builds on `ubuntu-latest`).
 
+## Packaging and signing
+- [x] Per-user Windows MSI (WiX 5.0.2, free MS-RL licence). Verified on Windows 11, unelevated: install, same-version PATH entry exactly once, upgrade in place, downgrade refused (1603), repair restores deleted files, uninstall removes files/registry/PATH entry (PATH identical except a dropped trailing `;`), Apps & features entry created and removed, `winget list` sees it.
+- [x] winget, Scoop, Chocolatey definitions generated from the real artifacts (`scripts/make-manifests.ps1`, real MSI ProductCode and hashes). `winget validate` passes; `choco pack` builds a `.nupkg`; Scoop JSON parses. **Not installed from any registry** (nothing is published).
+- [x] `.deb` (cargo-deb, `scripts/build-deb.sh`) plus man page and bash/zsh/fish completions: built, contents/permissions listed, extracted and run, man page renders, bash completion completes `d` -> `doctor`. **Not `dpkg -i`'d, no `lintian`, and `Depends` was empty in the local build** (no `dpkg-dev` here); the script now fails in CI if `dpkg-shlibdeps` is missing.
+- [x] Linux portability measured, not assumed: a 24.04 build needs glibc 2.39 and prints a loader warning on 22.04/Debian 12; a build inside Ubuntu 22.04 needs 2.34 and is clean on 22.04, Debian 12 and 24.04. Release workflow builds on `ubuntu-22.04` with a guard that fails above glibc 2.35.
+- [x] Authenticode signing script (`scripts/sign-windows.ps1`): tested with a temporary self-signed certificate (deleted afterwards): PFX and base64-secret paths, real RFC 3161 timestamp, strict mode refuses an untrusted chain, tamper => HashMismatch, no temp key file left, signed MSI still installs.
+- [x] Release workflow rewritten (Linux tar.gz + .deb, Windows zip + MSI + manifests, SHA256SUMS, keyless cosign signatures, build-provenance attestations); `actionlint` passes both workflows.
+- [ ] Signing with a **trusted** certificate: none exists. Options and costs are in `packaging/README.md` (SignPath Foundation, Azure Trusted Signing, OV/EV certificate).
+- [ ] The workflows have never run on GitHub; the cosign/attestation steps and the Windows signing-with-secrets path are unexecuted.
+- [ ] Nothing is published. Placeholders remain: license holder, Debian maintainer, winget publisher, repository URL.
+- [ ] Not covered: macOS, ARM, musl/Alpine, RPM, AUR, Flatpak/Snap, MSIX, an APT repository.
+
 ## Verification log
 - **Linux (WSL2 Ubuntu 24.04, kernel 6.6, rustc 1.99.1)**: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` clean; `cargo test` = 387 pass, 0 fail; `scripts/pty_smoke.py` = 33/33 checks pass; release binary built with `cargo build --release`. Windows after the same fixes: 384 pass, 0 fail.
 - Release pass: Windows `cargo test --locked` = 383 pass, 0 fail (one risky real-Docker test removed); `cargo fmt`/`clippy --locked -D warnings` clean with the corrected `rust-version = "1.95"` (which enabled a newer clippy lint, fixed).
+- Packaging pass: Windows `cargo test --locked` = 387 pass, Linux (WSL2) = 390 pass, 0 failures on both; fmt and clippy `-D warnings` clean on both. MSI lifecycle, winget validate, choco pack, .deb contents, signing with a temporary certificate, and 22.04/Debian 12/24.04 container runs were exercised for real; see Packaging and signing.
 - M0 (Windows 11, rustc 1.99.1): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (23 pass). Manually ran `--version`, `--help`, non-TTY refusal (exit 1), `--refresh-ms 0` rejection (exit 1). Interactive TTY run NOT yet done.
 - M1+M2 (Windows 11, rustc 1.99.1): fmt/clippy `-D warnings` clean; `cargo test` = 107 tests pass (unit 12, config 10, navigation 13, app 21, process view 12, rate 6, render 18, real-OS collector+actions 14, live pipeline 1). Interactive TTY run still NOT done.
 - M3 (Windows 11, rustc 1.99.1): fmt/clippy `-D warnings` clean; `cargo test` = 139 pass, 0 fail (adds palette 7, theme 4, snapshot schema 6, real-binary CLI 9, plus unit tests). Benchmarks: see PERFORMANCE.md.
