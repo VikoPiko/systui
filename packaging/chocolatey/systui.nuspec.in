@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>systui</id>
+    <version>@VERSION@</version>
+    <title>systui</title>
+    <authors>The systui authors</authors>
+    <projectUrl>https://github.com/@OWNER@/@REPO@</projectUrl>
+    <licenseUrl>https://github.com/@OWNER@/@REPO@/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/@OWNER@/@REPO@</projectSourceUrl>
+    <docsUrl>https://github.com/@OWNER@/@REPO@/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/@OWNER@/@REPO@/issues</bugTrackerUrl>
+    <tags>system-monitor tui terminal processes cli</tags>
+    <summary>Fast, read-only, keyboard-first terminal system monitor.</summary>
+    <description>systui is a native terminal system monitor: live CPU, memory, storage and network, a process explorer with guarded termination, and optional Docker, WSL, GPU, health-check, alert and read-only SSH panels. Read-only by default, never elevates, no telemetry. Run `systui`.</description>
+    <releaseNotes>https://github.com/@OWNER@/@REPO@/blob/main/CHANGELOG.md</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

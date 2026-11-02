@@ -1,0 +1,10 @@
+$ErrorActionPreference = 'Stop'
+$toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+# Unzips systui.exe into the package's tools folder; Chocolatey creates a shim on PATH for it.
+Install-ChocolateyZipPackage `
+    -PackageName 'systui' `
+    -Url64bit 'https://github.com/@OWNER@/@REPO@/releases/download/v@VERSION@/systui-v@VERSION@-windows-x86_64.zip' `
+    -Checksum64 '@ZIP_SHA256@' `
+    -ChecksumType64 'sha256' `
+    -UnzipLocation $toolsDir

@@ -1,0 +1,23 @@
+{
+    "version": "@VERSION@",
+    "description": "Fast, read-only, keyboard-first terminal system monitor.",
+    "homepage": "https://github.com/@OWNER@/@REPO@",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/@OWNER@/@REPO@/releases/download/v@VERSION@/systui-v@VERSION@-windows-x86_64.zip",
+            "hash": "@ZIP_SHA256@"
+        }
+    },
+    "bin": "systui.exe",
+    "checkver": {
+        "github": "https://github.com/@OWNER@/@REPO@"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/@OWNER@/@REPO@/releases/download/v$version/systui-v$version-windows-x86_64.zip"
+            }
+        }
+    }
+}

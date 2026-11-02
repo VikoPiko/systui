@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
+PackageIdentifier: @OWNER@.systui
+PackageVersion: @VERSION@
+PackageLocale: en-US
+Publisher: The systui authors
+PublisherUrl: https://github.com/@OWNER@
+PackageName: systui
+PackageUrl: https://github.com/@OWNER@/@REPO@
+License: MIT
+LicenseUrl: https://github.com/@OWNER@/@REPO@/blob/main/LICENSE
+ShortDescription: Fast, read-only, keyboard-first terminal system monitor.
+Description: |-
+  systui is a native terminal system monitor: live CPU, memory, storage and network, a process
+  explorer with guarded termination, and optional Docker, WSL, GPU, health-check, alert and
+  read-only SSH panels. It is read-only by default, never elevates, and has no telemetry.
+Moniker: systui
+Tags:
+  - system-monitor
+  - tui
+  - terminal
+  - processes
+ReleaseNotesUrl: https://github.com/@OWNER@/@REPO@/blob/main/CHANGELOG.md
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

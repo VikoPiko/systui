@@ -151,6 +151,8 @@ cargo install --path . --locked  # installs to ~/.cargo/bin (normally already on
 ```
 Then open a **new** terminal and run `systui`.
 
+**Prebuilt packages** (built by `scripts/build-msi.ps1`, `scripts/build-deb.sh` and the release workflow; see [packaging/README.md](packaging/README.md) for what is verified and what is not): a per-user Windows MSI (no admin, optional PATH entry), a `.deb` and a tarball for Linux (built on Ubuntu 22.04 so they run on 22.04+ and Debian 12+), plus winget, Scoop and Chocolatey definitions. Shell completions: `systui completions <bash|zsh|fish|powershell|elvish>`; man page: `systui man`. Nothing has been published yet.
+
 ## Keys
 
 | Key | Action |

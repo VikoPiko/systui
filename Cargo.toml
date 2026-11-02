@@ -44,3 +44,26 @@ windows = { version = "0.62", features = ["Win32_System_Power"] }
 [target.'cfg(unix)'.dependencies]
 # Only for killpg: a timed-out child's whole process group is killed, not just the shell.
 libc = "0.2"
+
+# `.deb` via cargo-deb; use scripts/build-deb.sh (it generates the man page and completions first).
+[package.metadata.deb]
+maintainer = "The systui maintainers <noreply@example.com>"  # replace with a real contact before publishing
+copyright = "2026, The systui authors"
+license-file = ["LICENSE", "0"]
+extended-description = """\
+systui is a native terminal system monitor: live CPU, memory, storage and network, a process \
+explorer with guarded termination, and optional Docker, WSL, GPU, health-check, alert and \
+read-only SSH panels. It is read-only by default, never elevates and has no telemetry."""
+section = "utils"
+priority = "optional"
+depends = "$auto"
+assets = [
+    ["target/release/systui", "usr/bin/", "755"],
+    ["target/pkg/systui.1.gz", "usr/share/man/man1/", "644"],
+    ["target/pkg/systui.bash", "usr/share/bash-completion/completions/systui", "644"],
+    ["target/pkg/_systui", "usr/share/zsh/vendor-completions/_systui", "644"],
+    ["target/pkg/systui.fish", "usr/share/fish/vendor_completions.d/systui.fish", "644"],
+    ["README.md", "usr/share/doc/systui/README.md", "644"],
+    ["CHANGELOG.md", "usr/share/doc/systui/CHANGELOG.md", "644"],
+    ["config/config.example.toml", "usr/share/doc/systui/examples/config.example.toml", "644"],
+]

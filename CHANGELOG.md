@@ -49,3 +49,8 @@ First feature-complete build (milestones M0–M6). Pre-1.0: the config format an
   against a real SSH server, or with real battery/thermal hardware.
 - The default 1 s refresh costs ≈ 2.7 % of one core on the Windows test machine in process views.
 - Minimum supported Rust version is set by dependencies (see `rust-version` in `Cargo.toml`).
+
+### Packaging (unreleased)
+- Per-user MSI (WiX 5.0.2), winget/Scoop/Chocolatey definitions, `.deb`, man page and shell completions
+  (`systui man`, `systui completions <shell>`), Authenticode signing script, keyless sigstore signing and
+  provenance attestations in the release workflow. Linux releases are built on Ubuntu 22.04 (glibc guard).

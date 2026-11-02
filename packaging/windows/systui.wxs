@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Per-user MSI for systui (WiX Toolset 5.0.x, MS-RL licence: pin `wix` to 5.0.2; v7+ adds a paid
+  maintenance fee). Installs to %LOCALAPPDATA%\Programs\systui, needs NO administrator rights, and
+  offers an optional feature that adds that folder to the USER Path. Nothing machine-wide is touched.
+
+  Build with scripts/build-msi.ps1 (it passes Version, ExePath and DocDir).
+  Install without PATH:  msiexec /i systui.msi ADDLOCAL=Main
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="systui"
+           Manufacturer="The systui authors"
+           Version="$(Version)"
+           UpgradeCode="A25FED58-82D7-4CA2-94CD-765E6593E327"
+           Scope="perUser"
+           InstallerVersion="500"
+           Compressed="yes">
+    <SummaryInformation Description="systui - fast, read-only terminal system monitor" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of systui is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="systui" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Files. A per-user package must key every component on a HKCU value (ICE38/ICE64). -->
+    <Component Id="AppFiles" Directory="INSTALLFOLDER" Guid="FE8969B5-B40D-4E2B-95C8-7BBAF11BD273">
+      <RegistryValue Root="HKCU" Key="Software\systui" Name="InstallDir" Type="string"
+                     Value="[INSTALLFOLDER]" KeyPath="yes" />
+      <File Id="SystuiExe" Source="$(ExePath)" Name="systui.exe" />
+      <File Id="Readme" Source="$(DocDir)\README.md" />
+      <File Id="License" Source="$(DocDir)\LICENSE" />
+      <File Id="Changelog" Source="$(DocDir)\CHANGELOG.md" />
+      <File Id="ExampleConfig" Source="$(DocDir)\config\config.example.toml" />
+      <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+    </Component>
+
+    <!-- Optional: add the install folder to the USER Path (undone again on uninstall). -->
+    <Component Id="UserPath" Directory="INSTALLFOLDER" Guid="7327E685-4CC4-49E3-AB89-2140CADD2173">
+      <RegistryValue Root="HKCU" Key="Software\systui" Name="PathEntryAdded" Type="integer"
+                     Value="1" KeyPath="yes" />
+      <Environment Id="UserPathEntry" Name="PATH" Action="set" Part="last" System="no"
+                   Permanent="no" Value="[INSTALLFOLDER]" />
+    </Component>
+
+    <Feature Id="Main" Title="systui" Level="1" AllowAbsent="no">
+      <ComponentRef Id="AppFiles" />
+      <Feature Id="AddToPath" Title="Add systui to the user PATH" Level="1">
+        <ComponentRef Id="UserPath" />
+      </Feature>
+    </Feature>
+
+  </Package>
+</Wix>

@@ -1,6 +1,13 @@
 name: Release
 
-# Push a tag such as v0.1.0 to build binaries and attach them to a GitHub release.
+# Push a tag such as v0.1.0 to build, package, sign and publish a GitHub release.
+#
+# Windows code signing is OPTIONAL and happens only if these repository secrets exist:
+#   WINDOWS_CERT_PFX_BASE64   the code-signing certificate (.pfx) encoded as base64
+#   WINDOWS_CERT_PASSWORD     its password
+# Without them the Windows files are published unsigned (and say so in the release notes below).
+# Linux files are signed keylessly with sigstore and get build-provenance attestations.
+# See packaging/README.md.
 on:
   push:
     tags: ["v*"]
@@ -9,68 +16,145 @@ env:
   CARGO_TERM_COLOR: always
 
 permissions:
-  contents: write
+  contents: write        # create the release
+  id-token: write        # keyless sigstore signing + attestations
+  attestations: write
 
 jobs:
-  build:
-    name: build (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Built on the runner's glibc, so the Linux binary needs a glibc at least that new.
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            archive: systui-${{ github.ref_name }}-linux-x86_64.tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            archive: systui-${{ github.ref_name }}-windows-x86_64.zip
+  linux:
+    name: linux (tar.gz + .deb)
+    # Deliberately NOT ubuntu-latest: a binary built against a newer glibc prints a loader warning (or
+    # fails) on older distributions. Building on 22.04 (glibc 2.35) keeps Ubuntu 22.04+ and Debian 12+
+    # working; a guard step below enforces it.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --locked --release
-      - run: cargo build --release --locked --target ${{ matrix.target }}
-
-      - name: Package (Linux)
-        if: runner.os == 'Linux'
+      - run: cargo install cargo-deb --locked
+      # Builds the release binary, generates the man page + completions from it, then the .deb.
+      - run: sh scripts/build-deb.sh
+      - name: Guard - the binary must not need a glibc newer than 2.35
         run: |
-          mkdir dist
-          cp target/${{ matrix.target }}/release/systui dist/
-          cp README.md LICENSE CHANGELOG.md config/config.example.toml dist/
-          tar -C dist -czf ${{ matrix.archive }} .
-          sha256sum ${{ matrix.archive }} > ${{ matrix.archive }}.sha256
+          max=$(objdump -T target/release/systui | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1)
+          echo "highest glibc symbol required: $max"
+          [ "$(printf '%s\n' GLIBC_2.35 "$max" | sort -V | tail -1)" = "GLIBC_2.35" ] \
+            || { echo "::error::binary needs $max (> GLIBC_2.35); it would not run cleanly on Ubuntu 22.04 / Debian 12"; exit 1; }
+      - name: Terminal smoke test (real TUI in a pseudo-terminal)
+        run: python3 scripts/pty_smoke.py
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist/pkg
+          cp target/release/systui README.md LICENSE CHANGELOG.md config/config.example.toml dist/pkg/
+          cp target/pkg/systui.1.gz target/pkg/systui.bash target/pkg/_systui target/pkg/systui.fish dist/pkg/
+          tar -C dist/pkg -czf "systui-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" .
+          cp target/debian/*.deb "systui-${VERSION}-amd64.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            systui-*-linux-x86_64.tar.gz
+            systui-*-amd64.deb
 
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
+  windows:
+    name: windows (zip + msi + package manifests)
+    runs-on: windows-latest
+    env:
+      WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+      WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked --release
+      - run: cargo build --release --locked
+
+      # Sign BEFORE packaging so the zip and the MSI both contain the signed executable.
+      - name: Sign systui.exe
+        if: env.WINDOWS_CERT_PFX_BASE64 != ''
+        shell: pwsh
+        run: ./scripts/sign-windows.ps1 -Files target/release/systui.exe
+
+      - name: Package zip
         shell: pwsh
         run: |
-          New-Item -ItemType Directory dist | Out-Null
-          Copy-Item target/${{ matrix.target }}/release/systui.exe dist/
-          Copy-Item README.md, LICENSE, CHANGELOG.md, config/config.example.toml dist/
-          Compress-Archive -Path dist/* -DestinationPath ${{ matrix.archive }}
-          (Get-FileHash ${{ matrix.archive }} -Algorithm SHA256).Hash.ToLower() + "  ${{ matrix.archive }}" | Out-File -Encoding ascii ${{ matrix.archive }}.sha256
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory dist/pkg | Out-Null
+          Copy-Item target/release/systui.exe, README.md, LICENSE, CHANGELOG.md, config/config.example.toml dist/pkg/
+          Compress-Archive -Path dist/pkg/* -DestinationPath "systui-$tag-windows-x86_64.zip"
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          ./scripts/build-msi.ps1 -InstallWix -Version $ver -Out "$PWD/systui-$ver-x64.msi"
+
+      - name: Sign MSI
+        if: env.WINDOWS_CERT_PFX_BASE64 != ''
+        shell: pwsh
+        run: ./scripts/sign-windows.ps1 -Files (Get-ChildItem systui-*-x64.msi).FullName
+
+      - name: Generate and validate winget / Scoop / Chocolatey definitions
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          ./scripts/make-manifests.ps1 `
+            -Owner "${{ github.repository_owner }}" -Repo "${{ github.event.repository.name }}" `
+            -Version $ver -Msi "systui-$ver-x64.msi" -Zip "systui-${{ github.ref_name }}-windows-x86_64.zip" `
+            -Out "$PWD/manifests" -Validate
+          Compress-Archive -Path manifests/* -DestinationPath "systui-${{ github.ref_name }}-package-manifests.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}
+          name: windows
           path: |
-            ${{ matrix.archive }}
-            ${{ matrix.archive }}.sha256
+            systui-*-windows-x86_64.zip
+            systui-*-x64.msi
+            systui-*-package-manifests.zip
 
   publish:
-    needs: build
+    needs: [linux, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      # Keyless signing: the signature is bound to this workflow's identity (no key to manage or leak).
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign every file with cosign (writes <file>.bundle)
+        working-directory: artifacts
+        run: |
+          for f in $(ls | grep -v '\.bundle$'); do
+            cosign sign-blob --yes --bundle "$f.bundle" "$f"
+          done
+
+      - name: Build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            artifacts/systui-*
+
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            ### Verifying downloads
+            ```
+            sha256sum -c SHA256SUMS --ignore-missing
+            gh attestation verify <file> --repo ${{ github.repository }}
+            cosign verify-blob --bundle <file>.bundle \
+              --certificate-identity-regexp 'https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/tags/v.*' \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com <file>
+            ```
+            Windows files are Authenticode-signed only if the maintainers configured a code-signing certificate for this
+            release; check with `Get-AuthenticodeSignature <file>`. See `packaging/README.md`.
