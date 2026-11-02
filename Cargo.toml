@@ -1,0 +1,43 @@
+[package]
+name = "systui"
+version = "0.1.0"
+edition = "2021"
+# Real minimum: `sysinfo` 0.40 needs rustc 1.95 (verified: 1.95 builds and passes, 1.94 is rejected).
+rust-version = "1.95"
+description = "Fast, keyboard-first terminal system monitor"
+license = "MIT"
+readme = "README.md"
+keywords = ["system-monitor", "tui", "terminal", "processes"]
+categories = ["command-line-utilities"]
+# Set a repository URL and remove this line when you decide where it is published.
+publish = false
+
+[[bin]]
+name = "systui"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
+sysinfo = { version = "0.40", default-features = false, features = ["system", "disk", "network"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+directories = "6"
+thiserror = "2"
+nvml-wrapper = "0.13"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"
+
+[target.'cfg(windows)'.dependencies]
+# Same major version sysinfo already uses, so nothing extra is compiled except this feature.
+windows = { version = "0.62", features = ["Win32_System_Power"] }
+
+[target.'cfg(unix)'.dependencies]
+# Only for killpg: a timed-out child's whole process group is killed, not just the shell.
+libc = "0.2"

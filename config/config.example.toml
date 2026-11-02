@@ -1,0 +1,112 @@
+# SysTUI example configuration. Every key is optional; absent keys use defaults.
+# Place at: %APPDATA%\systui\config\config.toml (Windows) or ~/.config/systui/config.toml (Linux).
+# Run `systui doctor` to see the exact resolved path.
+
+[ui]
+theme = "dark"          # dark | light | mono | auto
+unicode = "auto"        # auto | always | never
+refresh_ms = 1000       # 500-5000
+history_samples = 300   # 30-300
+start_view = "overview" # overview | processes | network | storage
+show_clock = true
+
+[processes]
+default_sort = "cpu"                # cpu | memory | name | pid
+cpu_mode = "per_core_equivalent"    # per_core_equivalent (may exceed 100%) | host_share
+confirm_terminate = true
+
+# --- Optional integrations (M4). Docker and WSL are OFF by default and nothing
+# --- is probed or run unless enabled. They poll only while the Dev tab (5) is shown.
+[modules]
+gpu = true      # NVIDIA via NVML; shows "unavailable" if there is no NVIDIA driver
+docker = false  # read-only `docker` CLI (ps, stats); `docker system df` only when you press R
+wsl = false     # Windows only: `wsl --list --verbose`
+health = false  # local health checks + Services tab (see [health] below)
+ssh = false     # read-only SSH checks of allowlisted hosts (see [[ssh.hosts]] below)
+
+[developer]
+# Whole-word matches on process names (com.docker.backend.exe matches "docker").
+process_families = ["dotnet", "node", "pnpm", "npm", "cargo", "rustc", "git", "docker", "wsl"]
+
+[developer.aliases]
+# Extra whole-word tokens that count as a family.
+wsl = ["wslservice", "wslhost", "wslrelay", "vmmemwsl"]
+
+[wsl]
+# Explicit list only; systui never searches for .vhdx files. Absolute paths to .vhdx files.
+# The host file size is shown (not guest free space). Example:
+# tracked_vhdx_paths = ['C:\Users\you\AppData\Local\wsl\{guid}\ext4.vhdx']
+tracked_vhdx_paths = []
+
+# --- M5: local health checks (Services tab). OFF by default; nothing is checked unless enabled.
+# Targets must be loopback (localhost / 127.x / ::1). Hostnames other than `localhost` are never
+# resolved. Add `allow_lan = true` under [health] to also allow private LAN IPs. Plain http:// only.
+[health]
+allow_lan = false
+
+[[health.checks]]
+name = "Local API (example - disabled)"
+type = "http"                          # http | tcp | process | service
+url = "http://127.0.0.1:7141/health"   # status line only: 2xx/3xx = healthy; query strings are never displayed
+enabled = false
+interval_seconds = 30                  # 5-3600
+timeout_ms = 1000                      # 100-10000, must be below the interval
+
+# [[health.checks]]
+# name = "Postgres"        # a successful TCP connect shows "port open", NOT "healthy"
+# type = "tcp"
+# host = "127.0.0.1"
+# port = 5432
+#
+# [[health.checks]]
+# name = "Node dev server"
+# type = "process"
+# process = "node"
+#
+# [[health.checks]]
+# name = "Windows Update"  # read-only: `sc query` on Windows, `systemctl show` on Linux
+# type = "service"
+# service = "wuauserv"
+
+# --- M5: alerts. OFF by default. No OS notifications are ever sent.
+[alerts]
+enabled = false
+cpu_percent = 90
+memory_percent = 90
+disk_free_percent_below = 10
+sustain_seconds = 15      # CPU/RAM/disk must stay past the limit this long
+hysteresis_points = 5     # must recover this many points past the limit...
+clear_seconds = 5         # ...for this long before clearing
+cooldown_seconds = 30     # a cleared alert cannot re-raise sooner than this
+service_failures = 3      # consecutive failed checks before a service alert
+
+# --- M6 (stretch). Everything below is OFF by default.
+
+# Read-only SSH checks of hosts you list here (an allowlist). Nothing is contacted until you
+# consent per host IN THE UI (Services tab: Tab, then C), and consent is never saved.
+# Uses your existing ssh keys/agent/~/.ssh/config; the host key must already be trusted.
+# It runs one fixed read-only script (load, memory, root disk, uptime, `systemctl is-active`).
+# [[ssh.hosts]]
+# name = "home-lab"
+# host = "192.168.1.50"      # hostname, IP, or a Host alias from ~/.ssh/config
+# user = "viko"
+# port = 22
+# interval_seconds = 60      # 15-3600
+# units = ["docker", "nginx"]
+# enabled = true
+
+# Session recording to JSONL. `enabled` only ALLOWS recording; start/stop it with Ctrl+R.
+[recording]
+enabled = false
+# directory = 'C:\Users\you\systui-recordings'   # absolute; default: per-user data dir
+interval_seconds = 5       # 1-3600
+top_processes = 10         # 0-50 per line
+max_file_mb = 10           # a new file starts before a file would exceed this
+max_files = 10             # retention: keep at most this many recording files
+max_total_mb = 100         # ...and at most this many MB in total
+max_age_days = 7           # ...and nothing older than this
+
+# Docker extras on the Dev tab (needs [modules] docker = true).
+[docker]
+log_lines = 100            # `l` on a container: how many log lines to preview (10-500)
+allow_actions = false      # S = stop, X = restart; each asks you to type the container name
