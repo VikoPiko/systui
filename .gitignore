@@ -1,0 +1,12 @@
+/target
+
+# files systui itself can write (exports and recordings), in case they land in the repo
+systui-process-*.json
+systui-*.jsonl
+*.log
+
+# editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
