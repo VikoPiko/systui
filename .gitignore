@@ -1,5 +1,6 @@
 /target
-/dist
+/dist/*
+!/dist/*.msi
 
 # files systui itself can write (exports and recordings), in case they land in the repo
 systui-process-*.json
