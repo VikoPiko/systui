@@ -98,6 +98,8 @@ pub struct ModulesConfig {
     pub health: bool,
     /// Read-only SSH checks of allowlisted hosts (opt-in, needs per-session consent).
     pub ssh: bool,
+    /// AI tab: reads status from local inference servers (loopback only) while it is shown.
+    pub ai: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -299,6 +301,65 @@ impl Default for SshHostConfig {
     }
 }
 
+/// Which API a local inference server speaks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AiKind {
+    /// Ollama native API (`/api/ps`, `/api/tags`).
+    Ollama,
+    /// LM Studio REST API (`/api/v0/models`, reports loaded/not-loaded).
+    Lmstudio,
+    /// Any OpenAI-compatible server (llama.cpp, vLLM, LocalAI, ...): `/v1/models` + `/metrics` if enabled.
+    Openai,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct AiEndpointConfig {
+    pub name: String,
+    pub kind: AiKind,
+    /// `http://` on loopback only (no TLS, no credentials, no LAN).
+    pub url: String,
+    pub enabled: bool,
+}
+
+impl Default for AiEndpointConfig {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            kind: AiKind::Ollama,
+            url: String::new(),
+            enabled: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct AiConfig {
+    /// Replaces the built-in list when set in the config file.
+    pub endpoints: Vec<AiEndpointConfig>,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        let ep = |name: &str, kind, port: u16| AiEndpointConfig {
+            name: name.to_string(),
+            kind,
+            url: format!("http://127.0.0.1:{port}"),
+            enabled: true,
+        };
+        Self {
+            endpoints: vec![
+                ep("Ollama", AiKind::Ollama, 11434),
+                ep("LM Studio", AiKind::Lmstudio, 1234),
+                ep("llama.cpp / OpenAI-compatible", AiKind::Openai, 8080),
+                ep("vLLM / OpenAI-compatible", AiKind::Openai, 8000),
+            ],
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct SshConfig {
@@ -308,6 +369,7 @@ pub struct SshConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub ai: AiConfig,
     pub ui: UiConfig,
     pub processes: ProcessConfig,
     pub modules: ModulesConfig,
@@ -328,6 +390,7 @@ impl Default for ModulesConfig {
             wsl: false,
             health: false,
             ssh: false,
+            ai: true,
         }
     }
 }
@@ -406,6 +469,7 @@ impl Config {
         self.validate_alerts()?;
         self.validate_recording()?;
         self.validate_ssh()?;
+        self.validate_ai()?;
         if !(10..=500).contains(&self.docker.log_lines) {
             return Err(ConfigError::Invalid {
                 key: "docker.log_lines",
@@ -521,6 +585,43 @@ impl Config {
         }
         if !(1..=100).contains(&a.service_failures) {
             return bad("alerts.service_failures", "use 1-100".into());
+        }
+        Ok(())
+    }
+
+    fn validate_ai(&self) -> Result<(), ConfigError> {
+        let bad = |message: String| {
+            Err(ConfigError::Invalid {
+                key: "ai.endpoints",
+                message,
+            })
+        };
+        if self.ai.endpoints.len() > 8 {
+            return bad("at most 8 endpoints".into());
+        }
+        let mut names = std::collections::HashSet::new();
+        for e in &self.ai.endpoints {
+            let n = e.name.trim();
+            if n.is_empty() || n.chars().count() > 40 || n.chars().any(char::is_control) {
+                return bad(format!(
+                    "endpoint name `{}` must be 1-40 printable characters",
+                    e.name
+                ));
+            }
+            if !names.insert(n.to_lowercase()) {
+                return bad(format!("duplicate endpoint name `{n}`"));
+            }
+            // Loopback only: local AI servers never need a LAN/public address here.
+            if let Err(m) = crate::health::parse_http_url(&e.url, false) {
+                // The generic message points at [health] allow_lan, which does not apply here.
+                let m = if m.contains("is not local") {
+                    "host must be loopback (localhost, 127.x or ::1); AI endpoints never leave this machine"
+                        .to_string()
+                } else {
+                    m
+                };
+                return bad(format!("`{n}`: {m}"));
+            }
         }
         Ok(())
     }

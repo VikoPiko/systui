@@ -278,6 +278,7 @@ fn every_module_state_is_labelled_not_hidden() {
                 ModStatus::Unavailable("NVIDIA driver/NVML not found".into()),
                 None,
             )),
+            ..Default::default()
         },
         Instant::now(),
     );
@@ -352,6 +353,7 @@ fn good_data_renders_with_units_and_na_for_unreported_fields() {
                 }),
             )),
             gpu: Some(snap(ModStatus::Ok, Some(gpu_data()))),
+            ..Default::default()
         },
         Instant::now(),
     );

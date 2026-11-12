@@ -131,6 +131,7 @@ pub fn render(frame: &mut Frame, app: &mut App, opts: &RenderOpts) {
         Tab::Storage => views::storage::render(frame, rows[2], app, opts, t),
         Tab::Developer => views::developer::render(frame, rows[2], app, opts, t),
         Tab::Services => views::services::render(frame, rows[2], app, opts, t),
+        Tab::Ai => views::ai::render(frame, rows[2], app, opts, t),
     }
     frame.render_widget(
         Paragraph::new(footer_line(app, opts, rows[3].width)),
@@ -222,19 +223,23 @@ fn footer_line(app: &App, opts: &RenderOpts, width: u16) -> Line<'static> {
             " / filter  s sort  Enter info  ? help  q quit",
         ),
         (_, Tab::Overview) => (
-            " 1-6 view  s CPU/MEM  w changes  Space pause  Ctrl+K cmds  ? help  q quit",
+            " 1-7 view  s CPU/MEM  w changes  Space pause  Ctrl+K cmds  ? help  q quit",
             " ? help  q quit",
         ),
         (_, Tab::Services) => (
             " j/k select  Tab checks/SSH hosts  C consent  R check now  ? help  q quit",
             " R check now  ? help  q quit",
         ),
+        (_, Tab::Ai) => (
+            " j/k scroll  R re-read model lists  1-7 view  ? help  q quit",
+            " j/k scroll  R refresh  ? help  q quit",
+        ),
         (_, Tab::Developer) => (
             " Tab panel  j/k select  Enter open family  l logs  S stop  X restart  R refresh  ? help  q quit",
             " Tab panel  R refresh  ? help  q quit",
         ),
         (_, Tab::Network | Tab::Storage) => (
-            " 1-6 view  j/k select  s sort  Space pause  Ctrl+K cmds  ? help  q quit",
+            " 1-7 view  j/k select  s sort  Space pause  Ctrl+K cmds  ? help  q quit",
             " ? help  q quit",
         ),
     };
@@ -279,7 +284,7 @@ fn render_help(frame: &mut Frame, area: Rect, opts: &RenderOpts) {
         "Ctrl+K     command palette (searches built-in commands only)",
         "w          what changed? (new/exited processes, CPU and memory deltas)",
         "Ctrl+R     start/stop session recording (needs [recording] enabled)",
-        "1-6        switch view",
+        "1-7        switch view",
         "Tab        cycle focus between panes",
         "Space      pause / resume the display (sampling continues)",
         "r          request an immediate refresh",
@@ -387,7 +392,7 @@ fn render_palette(
 ) {
     let th = &opts.theme;
     let results = crate::palette::search(&p.query);
-    let h = (results.len() as u16 + 4).clamp(6, 22);
+    let h = (results.len() as u16 + 4).clamp(6, 24);
     let r = centered(area, 64, h);
     frame.render_widget(Clear, r);
     let block = Block::default()

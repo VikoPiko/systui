@@ -9,6 +9,7 @@ pub enum Command {
     GoStorage,
     GoDeveloper,
     GoServices,
+    GoAi,
     TogglePause,
     RefreshNow,
     FilterProcesses,
@@ -59,6 +60,11 @@ pub const ALL: &[Spec] = &[
         cmd: Command::GoServices,
         title: "Go to Services & health",
         keys: "6",
+    },
+    Spec {
+        cmd: Command::GoAi,
+        title: "Go to Local AI",
+        keys: "7",
     },
     Spec {
         cmd: Command::TogglePause,

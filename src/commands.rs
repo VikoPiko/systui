@@ -306,6 +306,41 @@ pub fn doctor(config_override: Option<&Path>) -> Result<bool, String> {
             )))
         ),
     );
+    // Local AI servers: loopback GETs only, and only when the module is enabled.
+    if cfg.modules.ai {
+        use crate::modules::ai::{probe_once, ServerState};
+        let reports = probe_once(&cfg.ai.endpoints);
+        let up: Vec<String> = reports
+            .iter()
+            .filter_map(|r| match &r.state {
+                ServerState::Up(i) => Some(format!(
+                    "{} {} ({} loaded)",
+                    r.name,
+                    r.display,
+                    i.loaded.len()
+                )),
+                ServerState::Error(m) => Some(format!("{} {} ERROR - {m}", r.name, r.display)),
+                ServerState::NotRunning => None,
+            })
+            .collect();
+        line(
+            "local ai",
+            format!(
+                "enabled; {} endpoint(s) checked on loopback; {}",
+                reports.len(),
+                if up.is_empty() {
+                    "no server answering".to_string()
+                } else {
+                    up.join("; ")
+                }
+            ),
+        );
+    } else {
+        line(
+            "local ai",
+            "disabled in config (no endpoint is contacted)".to_string(),
+        );
+    }
     // M6 features. Nothing here contacts a remote host, writes a recording or touches a container.
     let ssh_client = match crate::util::exec::run("ssh", &["-V"], std::time::Duration::from_secs(5))
     {

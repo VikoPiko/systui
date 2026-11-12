@@ -9,12 +9,13 @@ use crate::config::{Config, CpuMode, StartView};
 use crate::dev::{self, Families, FamilyStats};
 use crate::domain::{Needs, NetNeed, ProcessId, Snapshot};
 use crate::export::{build as build_doc, proc_doc, Redactor};
+use crate::modules::ai::AiData;
 use crate::modules::docker::{valid_container_id, DockerData, LogPreview};
 use crate::modules::gpu::GpuData;
 use crate::modules::health::HealthSnapshot;
 use crate::modules::ssh::{SshSnapshot, SshStatus};
 use crate::modules::wsl::WslData;
-use crate::modules::{ModuleKind, ModuleSnapshot, Updates};
+use crate::modules::{ModStatus, ModuleKind, ModuleSnapshot, Updates};
 use crate::palette::{self, Command, PaletteState};
 use crate::processes::{ProcessView, MAX_FILTER_LEN};
 use crate::recorder::Recorder;
@@ -35,16 +36,18 @@ pub enum Tab {
     Storage,
     Developer,
     Services,
+    Ai,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 6] = [
+    pub const ALL: [Tab; 7] = [
         Tab::Overview,
         Tab::Processes,
         Tab::Network,
         Tab::Storage,
         Tab::Developer,
         Tab::Services,
+        Tab::Ai,
     ];
 
     pub fn title(self) -> &'static str {
@@ -55,6 +58,7 @@ impl Tab {
             Tab::Storage => "Storage",
             Tab::Developer => "Dev",
             Tab::Services => "Services",
+            Tab::Ai => "AI",
         }
     }
 
@@ -145,6 +149,8 @@ pub enum Effect {
     Needs(Needs),
     /// The Dev tab became visible / hidden (module workers poll only while visible).
     DevVisible(bool),
+    /// The AI tab became visible / hidden (its worker polls only while visible).
+    AiVisible(bool),
     /// Refresh one module now; `true` also runs its expensive extras (docker system df).
     ModuleRefresh(ModuleKind, bool),
     /// Run all health checks now (Services tab `R`).
@@ -240,6 +246,14 @@ impl<T> Default for ModView<T> {
     }
 }
 
+/// AI tab state: latest server report plus short GPU trend histories.
+pub struct AiState {
+    pub view: ModView<AiData>,
+    pub scroll: usize,
+    pub gpu_util: History,
+    pub vram: History,
+}
+
 pub struct DevState {
     pub families: Arc<Families>,
     pub stats: Vec<FamilyStats>,
@@ -275,7 +289,9 @@ pub struct App {
     pub ports: PortsView,
     pub storage: StorageView,
     pub dev: DevState,
+    pub ai: AiState,
     dev_visible_sent: bool,
+    ai_visible_sent: bool,
     needs_sent: Option<Needs>,
     /// Per-process I/O columns (`i` in the Processes tab).
     pub proc_io: bool,
@@ -361,7 +377,14 @@ impl App {
                 gpu: ModView::default(),
                 docker_table: TableState::default(),
             },
+            ai: AiState {
+                view: ModView::default(),
+                scroll: 0,
+                gpu_util: History::new(config.ui.history_samples),
+                vram: History::new(config.ui.history_samples),
+            },
             dev_visible_sent: false,
+            ai_visible_sent: false,
             needs_sent: None,
             proc_io: false,
             alerts: AlertEngine::new(config.alerts.clone()),
@@ -559,7 +582,7 @@ impl App {
     pub fn desired_needs(&self) -> Needs {
         let (processes, network) = match self.tab {
             Tab::Overview => (true, NetNeed::Slow),
-            Tab::Processes | Tab::Developer => (true, NetNeed::Off),
+            Tab::Processes | Tab::Developer | Tab::Ai => (true, NetNeed::Off),
             Tab::Network => (self.ports.open, NetNeed::Fast),
             Tab::Storage | Tab::Services => (false, NetNeed::Off),
         };
@@ -583,6 +606,11 @@ impl App {
         if ssh_v != self.ssh_visible_sent {
             self.ssh_visible_sent = ssh_v;
             self.effects.push(Effect::SshVisible(ssh_v));
+        }
+        let ai_v = self.tab == Tab::Ai;
+        if ai_v != self.ai_visible_sent {
+            self.ai_visible_sent = ai_v;
+            self.effects.push(Effect::AiVisible(ai_v));
         }
         let v = self.tab == Tab::Developer;
         if v != self.dev_visible_sent {
@@ -731,7 +759,7 @@ impl App {
                 self.effects.push(Effect::RefreshNow);
                 self.notice = Some("refresh requested".into());
             }
-            KeyCode::Char(c @ '1'..='6') => self.select_tab(Tab::ALL[c as usize - '1' as usize]),
+            KeyCode::Char(c @ '1'..='7') => self.select_tab(Tab::ALL[c as usize - '1' as usize]),
             KeyCode::Tab | KeyCode::BackTab if self.tab == Tab::Developer => {
                 self.cycle_dev_pane(key.code == KeyCode::BackTab)
             }
@@ -739,6 +767,7 @@ impl App {
             _ => match self.tab {
                 Tab::Developer => self.dev_key(key),
                 Tab::Services => self.services_key(key),
+                Tab::Ai => self.ai_key(key),
                 Tab::Overview => self.overview_key(key),
                 Tab::Processes => self.process_key(key),
                 Tab::Network => self.network_key(key),
@@ -1038,6 +1067,7 @@ impl App {
             Command::GoStorage => self.select_tab(Tab::Storage),
             Command::GoDeveloper => self.select_tab(Tab::Developer),
             Command::GoServices => self.select_tab(Tab::Services),
+            Command::GoAi => self.select_tab(Tab::Ai),
             Command::TogglePause => self.set_paused(!self.paused, now),
             Command::RefreshNow => {
                 self.effects.push(Effect::RefreshNow);
@@ -1146,7 +1176,25 @@ impl App {
                 received_at: Some(now),
             };
         }
+        if let Some(s) = u.ai {
+            self.ai.view = ModView {
+                snap: Some(s),
+                received_at: Some(now),
+            };
+        }
         if let Some(s) = u.gpu {
+            // Trend for the AI tab: only real readings, and only from a healthy poll.
+            if s.status == ModStatus::Ok {
+                if let Some(g) = s.data.as_ref().and_then(|d| d.gpus.first()) {
+                    if let Some(u) = g.util_gpu_percent {
+                        self.ai.gpu_util.push(f64::from(u));
+                    }
+                    if let Some((used, total)) = g.mem_used.zip(g.mem_total).filter(|(_, t)| *t > 0)
+                    {
+                        self.ai.vram.push(used as f64 * 100.0 / total as f64);
+                    }
+                }
+            }
             self.dev.gpu = ModView {
                 snap: Some(s),
                 received_at: Some(now),
@@ -1330,6 +1378,26 @@ impl App {
         self.health = Some(h);
         self.health_received_at = Some(now);
         self.observe_alerts(now);
+    }
+
+    fn ai_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Down | KeyCode::Char('j') => self.ai.scroll = self.ai.scroll.saturating_add(1),
+            KeyCode::Up | KeyCode::Char('k') => self.ai.scroll = self.ai.scroll.saturating_sub(1),
+            KeyCode::PageDown => self.ai.scroll = self.ai.scroll.saturating_add(10),
+            KeyCode::PageUp => self.ai.scroll = self.ai.scroll.saturating_sub(10),
+            KeyCode::Home | KeyCode::Char('g') => self.ai.scroll = 0,
+            KeyCode::Char('R') => {
+                if self.config.modules.ai {
+                    self.effects
+                        .push(Effect::ModuleRefresh(ModuleKind::Ai, true));
+                    self.notice = Some("re-reading the installed-model listsâ€¦".into());
+                } else {
+                    self.notice = Some("the AI module is disabled in the config".into());
+                }
+            }
+            _ => {}
+        }
     }
 
     fn services_key(&mut self, key: KeyEvent) {

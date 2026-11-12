@@ -48,7 +48,7 @@ fn number_keys_switch_available_tabs() {
 }
 
 #[test]
-fn all_six_tabs_are_reachable_by_number() {
+fn all_seven_tabs_are_reachable_by_number() {
     let mut a = app();
     for (c, tab) in [
         ('1', Tab::Overview),
@@ -57,6 +57,7 @@ fn all_six_tabs_are_reachable_by_number() {
         ('4', Tab::Storage),
         ('5', Tab::Developer),
         ('6', Tab::Services),
+        ('7', Tab::Ai),
     ] {
         a.handle_key(key(KeyCode::Char(c)));
         assert_eq!(a.tab, tab);

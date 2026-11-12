@@ -42,7 +42,8 @@ if ($have -ne $wixVersion) { Write-Warning "Built and tested with WiX $wixVersio
 
 & wix build (Join-Path $root 'packaging\windows\systui.wxs') `
     -arch x64 -o $Out `
-    -d "Version=$Version" -d "ExePath=$Exe" -d "DocDir=$root"
+    -d "Version=$Version" -d "ExePath=$Exe" -d "DocDir=$root" `
+    -d "IconPath=$(Join-Path $root 'packaging\windows\systui.ico')"
 if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 Write-Host "Built $Out"
 Write-Host ("SHA256 " + (Get-FileHash $Out -Algorithm SHA256).Hash.ToLower())

@@ -19,6 +19,10 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of systui is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- Icon for the Start Menu shortcut and the Apps & features entry (scripts/make-icon.ps1). -->
+    <Icon Id="SystuiIcon.ico" SourceFile="$(IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="SystuiIcon.ico" />
+
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="ProgramsFolder" Name="Programs">
         <Directory Id="INSTALLFOLDER" Name="systui" />
@@ -45,8 +49,28 @@
                    Permanent="no" Value="[INSTALLFOLDER]" />
     </Component>
 
+    <!-- Start Menu shortcut (per user). systui is a TUI, so the shortcut opens it in Windows Terminal
+         when wt.exe is available and otherwise in a new classic console window. The helper cmd is
+         started minimised and exits right after `start`, so no stray window is left behind. -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="StartMenuDir" Name="systui" />
+    </StandardDirectory>
+    <Component Id="StartMenuShortcut" Directory="StartMenuDir" Guid="3C1D5B0E-6A52-4F0B-9D7E-2B8A4C61F0A9">
+      <RegistryValue Root="HKCU" Key="Software\systui" Name="StartMenuShortcut" Type="integer"
+                     Value="1" KeyPath="yes" />
+      <Shortcut Id="SystuiShortcut" Name="systui"
+                Description="systui - terminal system monitor"
+                Target="[SystemFolder]cmd.exe"
+                Arguments="/d /s /c &quot;where wt.exe &gt;nul 2&gt;&amp;1 &amp;&amp; (start &quot;&quot; wt.exe &quot;[INSTALLFOLDER]systui.exe&quot;) || start &quot;&quot; &quot;[INSTALLFOLDER]systui.exe&quot;&quot;"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="SystuiIcon.ico"
+                Show="minimized" />
+      <RemoveFolder Id="RemoveStartMenuDir" Directory="StartMenuDir" On="uninstall" />
+    </Component>
+
     <Feature Id="Main" Title="systui" Level="1" AllowAbsent="no">
       <ComponentRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
       <Feature Id="AddToPath" Title="Add systui to the user PATH" Level="1">
         <ComponentRef Id="UserPath" />
       </Feature>

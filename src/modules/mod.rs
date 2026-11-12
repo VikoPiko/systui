@@ -2,6 +2,7 @@
 //! with its own cadence, starts lazily the first time the Dev tab is opened, polls
 //! only while that tab is visible, and can fail without affecting core monitoring.
 
+pub mod ai;
 pub mod docker;
 pub mod gpu;
 pub mod health;
@@ -145,6 +146,7 @@ pub enum ModuleKind {
     Docker,
     Wsl,
     Gpu,
+    Ai,
 }
 
 #[derive(Default)]
@@ -152,15 +154,20 @@ pub struct Updates {
     pub docker: Option<Arc<ModuleSnapshot<docker::DockerData>>>,
     pub wsl: Option<Arc<ModuleSnapshot<wsl::WslData>>>,
     pub gpu: Option<Arc<ModuleSnapshot<gpu::GpuData>>>,
+    pub ai: Option<Arc<ModuleSnapshot<ai::AiData>>>,
 }
 
-/// Owns the module workers. Creates NOTHING until the Dev tab is first shown.
+/// Owns the module workers. Creates NOTHING until the Dev or AI tab is first shown.
 pub struct ModuleSet {
     cfg: Config,
     docker: Option<ModuleHandle<docker::DockerData>>,
     wsl: Option<ModuleHandle<wsl::WslData>>,
     gpu: Option<ModuleHandle<gpu::GpuData>>,
+    ai: Option<ModuleHandle<ai::AiData>>,
     started: bool,
+    dev_started: bool,
+    dev_visible: bool,
+    ai_visible: bool,
 }
 
 impl ModuleSet {
@@ -170,12 +177,17 @@ impl ModuleSet {
             docker: None,
             wsl: None,
             gpu: None,
+            ai: None,
             started: false,
+            dev_started: false,
+            dev_visible: false,
+            ai_visible: false,
         }
     }
 
-    fn start(&mut self) {
+    fn start_dev(&mut self) {
         self.started = true;
+        self.dev_started = true;
         let m = &self.cfg.modules;
         if m.docker {
             self.docker = Some(docker::spawn());
@@ -183,26 +195,49 @@ impl ModuleSet {
         if m.wsl {
             self.wsl = Some(wsl::spawn(self.cfg.wsl.tracked_vhdx_paths.clone()));
         }
-        if m.gpu {
+        self.ensure_gpu();
+    }
+
+    /// The GPU worker is shared by the Dev and AI tabs; it is created once, on first need.
+    fn ensure_gpu(&mut self) {
+        if self.cfg.modules.gpu && self.gpu.is_none() {
             self.gpu = Some(gpu::spawn());
         }
     }
 
-    pub fn set_visible(&mut self, visible: bool) {
-        if visible && !self.started {
-            self.start();
-        }
+    /// Every worker polls only while a tab that shows it is visible.
+    fn apply_visibility(&self) {
         if let Some(h) = &self.docker {
-            h.send(ModCmd::Visible(visible));
+            h.send(ModCmd::Visible(self.dev_visible));
         }
         if let Some(h) = &self.wsl {
-            h.send(ModCmd::Visible(visible));
+            h.send(ModCmd::Visible(self.dev_visible));
         }
         if let Some(h) = &self.gpu {
-            h.send(ModCmd::Visible(visible));
+            h.send(ModCmd::Visible(self.dev_visible || self.ai_visible));
+        }
+        if let Some(h) = &self.ai {
+            h.send(ModCmd::Visible(self.ai_visible));
         }
     }
 
+    pub fn set_visible(&mut self, visible: bool) {
+        self.dev_visible = visible;
+        if visible && !self.dev_started {
+            self.start_dev();
+        }
+        self.apply_visibility();
+    }
+
+    pub fn set_ai_visible(&mut self, visible: bool) {
+        self.ai_visible = visible;
+        if visible && self.ai.is_none() && self.cfg.modules.ai {
+            self.started = true;
+            self.ai = Some(ai::spawn(&self.cfg.ai.endpoints));
+            self.ensure_gpu();
+        }
+        self.apply_visibility();
+    }
     pub fn refresh(&self, kind: ModuleKind, extra: bool) {
         let c = if extra {
             ModCmd::Extra
@@ -213,6 +248,7 @@ impl ModuleSet {
             ModuleKind::Docker => self.docker.as_ref().map(|h| h.send(c)),
             ModuleKind::Wsl => self.wsl.as_ref().map(|h| h.send(c)),
             ModuleKind::Gpu => self.gpu.as_ref().map(|h| h.send(c)),
+            ModuleKind::Ai => self.ai.as_ref().map(|h| h.send(c)),
         };
     }
 
@@ -221,6 +257,7 @@ impl ModuleSet {
             docker: self.docker.as_ref().and_then(|h| h.take_latest()),
             wsl: self.wsl.as_ref().and_then(|h| h.take_latest()),
             gpu: self.gpu.as_ref().and_then(|h| h.take_latest()),
+            ai: self.ai.as_ref().and_then(|h| h.take_latest()),
         }
     }
 

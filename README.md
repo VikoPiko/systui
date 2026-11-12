@@ -129,6 +129,7 @@ not shown). The terminal version has colours, a highlighted selection and bars t
 | Storage | `4` | Mounted volumes: capacity, used %, free (capacity only, not disk I/O) |
 | Dev | `5` | Process families (node, dotnet, cargo, docker, …) with counts, memory, CPU and hedged "possible" flags; plus **GPU (NVIDIA)**, **Docker** and **WSL** panels |
 | Services | `6` | Your own **local health checks** (TCP, HTTP status, process, OS service) and **alerts** (both opt-in) |
+| Local AI | `7` | **Local inference servers** (Ollama, LM Studio, llama.cpp / vLLM / any OpenAI-compatible): loaded models, how much of each sits in GPU memory, unload timer, installed models, throughput and queue where the server exposes them; plus GPU VRAM/load trend and engine processes |
 
 Missing data is shown as `—`, `denied`, `warming up…` or `unavailable`, never as `0`.
 
@@ -205,7 +206,7 @@ The `.deb` installs both automatically.
 | `w` | **What changed?** overlay: new/exited processes and the biggest CPU/memory moves since ~5 s, 30 s or 2 min ago (`[` `]` pick the window) |
 | `L` | Network: **listening sockets** with owning process (collected once on demand; `R` refreshes) |
 | `Ctrl+R` | Start/stop **session recording** (JSONL; needs `[recording] enabled = true`; shows `REC` in the header) |
-| `R` | Dev/Services/Network-ports: refresh the focused panel (Docker also runs `system df`) |
+| `R` | Dev/Services/AI/Network-ports: refresh the focused panel (Docker also runs `system df`) |
 | `l` / `S` / `X` | Dev, Docker panel: container **logs** preview / **stop** / **restart** (stop and restart need `[docker] allow_actions = true` and typing the container name) |
 | `C` | Services, SSH hosts (after `Tab`): give **consent** to contact the selected allowlisted host |
 | `x` | Export the selected process as sanitized JSON to the current directory (never overwrites) |
@@ -376,6 +377,29 @@ enabled = true                        # CPU/RAM >= 90 % for 15 s, disk free < 10
   `cooldown_seconds`. Missing data never raises or clears an alert. They are shown in the header
   (`ALERT n`), the Overview, and the Services tab; **no OS notifications are sent**. Alerts keep
   evaluating while the display is paused.
+
+## Local AI tab
+
+Press `7`. Read-only: systui sends plain `GET` requests to servers on **this machine** (`localhost` / `127.x` / `::1`,
+no TLS, no credentials, no LAN) and only while the tab is visible. Nothing is loaded, unloaded or changed.
+
+| Server | Source | What you see |
+| --- | --- | --- |
+| Ollama (`:11434`) | `/api/ps`, `/api/tags`, `/api/version` | loaded models, size and **how much is in VRAM vs CPU/RAM**, context length, quantization, time until it unloads, installed models and disk use |
+| LM Studio (`:1234`) | `/api/v0/models` | loaded vs installed models, quantization, context length |
+| llama.cpp, vLLM, other OpenAI-compatible (`:8080`, `:8000`) | `/v1/models` and `/metrics` | served models; generation/prompt tokens/s, running/waiting requests and KV-cache use **when `/metrics` is enabled** (llama.cpp: `--metrics`) |
+
+Below the servers: NVIDIA VRAM and GPU load with a short trend (GPU 0), host RAM, and the engine processes it can
+recognise by name (`ollama`, `llama-server`, `LM Studio`, `koboldcpp`, `llamafile`, …) with summed memory and CPU.
+
+* Only what a server reports is shown. Ollama has no live tokens/s or request count, LM Studio reports no per-model
+  memory, and llama.cpp's tokens/s are server-side **averages**; absent values are `—`, never `0`, and the panel says so.
+* Server-reported model sizes and host/GPU memory are different measurements and are never added together.
+* Python-hosted engines (`vllm serve`, text-generation-webui, ComfyUI) appear as `python` and are not detected as
+  processes; their HTTP endpoint still is, if configured.
+* Add or change endpoints with `[[ai.endpoints]]` (a configured list replaces the built-in four); turn the tab off with
+  `[modules] ai = false`. `systui doctor` lists which servers answer.
+* Not covered: per-process GPU memory, non-NVIDIA GPUs, live tokens/s for Ollama, history of past requests.
 
 ## Stretch features (M6) — all off by default
 

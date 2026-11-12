@@ -25,6 +25,10 @@ First feature-complete build (milestones M0–M6). Pre-1.0: the config format an
 - **Services tab:** local-only health checks (TCP, HTTP status, process, OS service) and low-noise
   alerts (sustain, hysteresis, cool-down); "What changed?" process diff (`w`); listening ports with
   owner (`L`).
+- **AI tab (`7`):** read-only monitoring of local inference servers on loopback: Ollama (loaded models, GPU/CPU
+  split, unload timer, installed models), LM Studio, and OpenAI-compatible servers such as llama.cpp and vLLM (served
+  models, tokens/s and queue depth from `/metrics` when enabled), plus NVIDIA VRAM/load trend and engine process
+  totals. Configurable `[[ai.endpoints]]`, `[modules] ai`, and a `local ai` line in `systui doctor`.
 - **Stretch features (all off by default):** battery/temperature/throttle sensors, session recording
   to JSONL with size and retention limits (`Ctrl+R`), Docker log preview and confirmed stop/restart,
   consent-based read-only SSH checks of allowlisted hosts.

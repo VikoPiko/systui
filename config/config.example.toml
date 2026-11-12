@@ -19,10 +19,11 @@ confirm_terminate = true
 # --- is probed or run unless enabled. They poll only while the Dev tab (5) is shown.
 [modules]
 gpu = true      # NVIDIA via NVML; shows "unavailable" if there is no NVIDIA driver
-docker = false  # read-only `docker` CLI (ps, stats); `docker system df` only when you press R
+docker = true  # read-only `docker` CLI (ps, stats); `docker system df` only when you press R
 wsl = false     # Windows only: `wsl --list --verbose`
-health = false  # local health checks + Services tab (see [health] below)
-ssh = false     # read-only SSH checks of allowlisted hosts (see [[ssh.hosts]] below)
+health = true  # local health checks + Services tab (see [health] below)
+ssh = true     # read-only SSH checks of allowlisted hosts (see [[ssh.hosts]] below)
+ai = true       # AI tab (7): reads loaded models/GPU memory from LOCAL inference servers; loopback GETs only, polls only while shown
 
 [developer]
 # Whole-word matches on process names (com.docker.backend.exe matches "docker").
@@ -110,3 +111,20 @@ max_age_days = 7           # ...and nothing older than this
 [docker]
 log_lines = 100            # `l` on a container: how many log lines to preview (10-500)
 allow_actions = false      # S = stop, X = restart; each asks you to type the container name
+
+# --- Local AI tab (7). Read-only GETs to loopback servers, only while the tab is shown.
+# By default these four are probed; setting any [[ai.endpoints]] REPLACES that list.
+# kind = ollama    -> /api/ps (loaded models, VRAM split, unload time), /api/tags (installed)
+# kind = lmstudio  -> /api/v0/models (loaded / not-loaded)
+# kind = openai    -> /v1/models, plus /metrics if the server exposes it (llama.cpp --metrics, vLLM)
+# Only http:// on localhost / 127.x / ::1 is accepted (no TLS, no credentials, no LAN).
+# [[ai.endpoints]]
+# name = "Ollama"
+# kind = "ollama"
+# url = "http://127.0.0.1:11434"
+#
+# [[ai.endpoints]]
+# name = "llama-server"
+# kind = "openai"
+# url = "http://127.0.0.1:8080"
+# enabled = true

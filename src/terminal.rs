@@ -101,7 +101,7 @@ pub fn run(mut app: App, opts: RenderOpts) -> std::io::Result<()> {
         }
         if modules.started() {
             let u = modules.take();
-            if u.docker.is_some() || u.wsl.is_some() || u.gpu.is_some() {
+            if u.docker.is_some() || u.wsl.is_some() || u.gpu.is_some() || u.ai.is_some() {
                 app.ingest_modules(u, now);
                 dirty = true;
             }
@@ -112,6 +112,7 @@ pub fn run(mut app: App, opts: RenderOpts) -> std::io::Result<()> {
                 Effect::Watch(w) => collector.send(Cmd::Watch(w)),
                 Effect::Needs(n) => collector.send(Cmd::Needs(n)),
                 Effect::DevVisible(v) => modules.set_visible(v),
+                Effect::AiVisible(v) => modules.set_ai_visible(v),
                 Effect::ModuleRefresh(k, extra) => modules.refresh(k, extra),
                 Effect::CollectListeners => {
                     // Short-lived thread: the OS tool may take seconds; the UI never waits.
