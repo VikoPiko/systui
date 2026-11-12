@@ -95,6 +95,7 @@
 
 ## Packaging and signing
 - [x] Per-user Windows MSI (WiX 5.0.2, free MS-RL licence). Verified on Windows 11, unelevated: install, same-version PATH entry exactly once, upgrade in place, downgrade refused (1603), repair restores deleted files, uninstall removes files/registry/PATH entry (PATH identical except a dropped trailing `;`), Apps & features entry created and removed, `winget list` sees it.
+- [x] MSI Start Menu shortcut carries hotkey Ctrl+Alt+S (`Hotkey="1619"`). Verified only that the built MSI's Shortcut table holds 1619; **pressing the hotkey after install was not tested**.
 - [x] winget, Scoop, Chocolatey definitions generated from the real artifacts (`scripts/make-manifests.ps1`, real MSI ProductCode and hashes). `winget validate` passes; `choco pack` builds a `.nupkg`; Scoop JSON parses. **Not installed from any registry** (nothing is published).
 - [x] `.deb` (cargo-deb, `scripts/build-deb.sh`) plus man page and bash/zsh/fish completions: built, contents/permissions listed, extracted and run, man page renders, bash completion completes `d` -> `doctor`. **Not `dpkg -i`'d, no `lintian`, and `Depends` was empty in the local build** (no `dpkg-dev` here); the script now fails in CI if `dpkg-shlibdeps` is missing.
 - [x] Linux portability measured, not assumed: a 24.04 build needs glibc 2.39 and prints a loader warning on 22.04/Debian 12; a build inside Ubuntu 22.04 needs 2.34 and is clean on 22.04, Debian 12 and 24.04. Release workflow builds on `ubuntu-22.04` with a guard that fails above glibc 2.35.

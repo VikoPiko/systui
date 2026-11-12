@@ -163,6 +163,8 @@ dotnet tool install --global wix --version 5.0.2     # once
 msiexec /i dist\systui-0.1.0-x64.msi                 # installs to %LOCALAPPDATA%\Programs\systui and adds it to your user PATH
 msiexec /i dist\systui-0.1.0-x64.msi ADDLOCAL=Main   # same, but leaves PATH alone
 ```
+The MSI also adds a Start Menu shortcut with the global hotkey **Ctrl+Alt+S**, which opens systui in Windows Terminal (or a console window). Windows only allows `Ctrl+Alt+<key>` for shortcut hotkeys, so `Alt+Shift+Esc` is not possible without a resident process. To change the key, open the shortcut's *Properties → Shortcut key*. The hotkey needs Explorer running, and on keyboard layouts where Ctrl+Alt is AltGr, Ctrl+Alt+S may type a character in some apps.
+
 Uninstall from *Settings → Apps*, or `msiexec /x dist\systui-0.1.0-x64.msi`. If you already have another `systui.exe` earlier on your PATH, that one runs first (`Get-Command systui -All` shows which).
 
 **Debian / Ubuntu `.deb`** (needs `dpkg-dev` so dependencies are filled in):

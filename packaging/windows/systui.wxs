@@ -51,7 +51,11 @@
 
     <!-- Start Menu shortcut (per user). systui is a TUI, so the shortcut opens it in Windows Terminal
          when wt.exe is available and otherwise in a new classic console window. The helper cmd is
-         started minimised and exits right after `start`, so no stray window is left behind. -->
+         started minimised and exits right after `start`, so no stray window is left behind.
+         Hotkey="1619" = 0x0653 = Ctrl+Alt+S (high byte 0x06 = Ctrl|Alt, low byte 0x53 = 'S'). Windows
+         only honours shortcut hotkeys with a Ctrl+Alt prefix and only for Start Menu/Desktop
+         shortcuts, so no resident process is needed. -->
+
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="StartMenuDir" Name="systui" />
     </StandardDirectory>
@@ -64,6 +68,7 @@
                 Arguments="/d /s /c &quot;where wt.exe &gt;nul 2&gt;&amp;1 &amp;&amp; (start &quot;&quot; wt.exe &quot;[INSTALLFOLDER]systui.exe&quot;) || start &quot;&quot; &quot;[INSTALLFOLDER]systui.exe&quot;&quot;"
                 WorkingDirectory="INSTALLFOLDER"
                 Icon="SystuiIcon.ico"
+                Hotkey="1619"
                 Show="minimized" />
       <RemoveFolder Id="RemoveStartMenuDir" Directory="StartMenuDir" On="uninstall" />
     </Component>

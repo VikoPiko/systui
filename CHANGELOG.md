@@ -55,6 +55,7 @@ First feature-complete build (milestones M0–M6). Pre-1.0: the config format an
 - Minimum supported Rust version is set by dependencies (see `rust-version` in `Cargo.toml`).
 
 ### Packaging (unreleased)
+- MSI Start Menu shortcut has the global hotkey Ctrl+Alt+S
 - Per-user MSI (WiX 5.0.2), winget/Scoop/Chocolatey definitions, `.deb`, man page and shell completions
   (`systui man`, `systui completions <shell>`), Authenticode signing script, keyless sigstore signing and
   provenance attestations in the release workflow. Linux releases are built on Ubuntu 22.04 (glibc guard).
