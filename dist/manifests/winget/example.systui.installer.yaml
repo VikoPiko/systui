@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: example.systui
+PackageVersion: 0.1.0
+InstallerType: wix
+Scope: user
+InstallerSwitches:
+  Silent: /qn
+  SilentWithProgress: /qb
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/example/systui/releases/download/v0.1.0/systui-0.1.0-x64.msi
+    InstallerSha256: 515D30B3769EE57D563DAA810755C114CA478D569892E7D11B359D8A048BA02D
+    ProductCode: '{D714DD10-1593-4ABD-8CD4-A2B7BD477116}'
+ManifestType: installer
+ManifestVersion: 1.9.0
